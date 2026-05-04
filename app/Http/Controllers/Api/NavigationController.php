@@ -132,7 +132,7 @@ class NavigationController extends Controller
                 // this is for the developer
                 [
                     'type' => 'offer',
-                    'text' => `The dev is "Emmanuel | C'est Bro Code" - a passionate software engineer and affiliate marketer with a vision to revolutionize the industry.`,
+                    'text' => 'The dev is "Emmanuel | C\'est Bro Code" - a passionate software engineer and affiliate marketer with a vision to revolutionize the industry.',
                     'link' => null,
                     'ts' => now()->toISOString(),
                 ]

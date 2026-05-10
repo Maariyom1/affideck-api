@@ -17,9 +17,17 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        // Developer test user
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+        ]);
+
+        // Seed admin user for local/dev testing
+        User::factory()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@affideck.com',
+            'password' => 'admin',
         ]);
     }
 }

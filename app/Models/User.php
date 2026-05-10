@@ -72,4 +72,9 @@ class User extends Authenticatable
     {
         return str_contains(strtolower((string) $this->email), 'admin');
     }
+
+    public function isSuperAdmin(): bool
+    {
+        return str_contains(strtolower((string) $this->email), 'superadmin');
+    }
 }

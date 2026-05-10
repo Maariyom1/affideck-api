@@ -36,13 +36,13 @@ class ReferralController extends Controller
 
     public function commissions(Request $request)
     {
-        $query = ReferralConversion::whereHas('referral', function ($q) use ($request) { 
-            $q->where('user_id', $request->user()->id); 
+        $baseQuery = ReferralConversion::whereHas('referral', function ($q) use ($request) {
+            $q->where('user_id', $request->user()->id);
         });
-        
-        $total = $query->sum('commission');
-        $pending = $query->where('status', 'pending')->sum('commission');
-        $paid = $query->where('status', 'paid')->sum('commission');
+
+        $total = (clone $baseQuery)->sum('commission');
+        $pending = (clone $baseQuery)->where('status', 'pending')->sum('commission');
+        $paid = (clone $baseQuery)->where('status', 'paid')->sum('commission');
         
         return response()->json([
             'data' => [

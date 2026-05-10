@@ -105,8 +105,8 @@ Route::middleware('api.token')->group(function (): void {
     Route::post('uploads', [\App\Http\Controllers\Api\UploadController::class, 'store']);
     Route::delete('uploads/{id}', [\App\Http\Controllers\Api\UploadController::class, 'destroy']);
 
-    // Admin: Offer approvals
-    Route::prefix('admin')->group(function (): void {
+    // Admin: Offer approvals (protected by admin role middleware)
+    Route::prefix('admin')->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class)->group(function (): void {
         Route::get('offer-approvals', [\App\Http\Controllers\Api\Admin\OfferApprovalController::class, 'index']);
         Route::patch('offer-approvals/{approvalId}/approve', [\App\Http\Controllers\Api\Admin\OfferApprovalController::class, 'approve']);
         Route::patch('offer-approvals/{approvalId}/deny', [\App\Http\Controllers\Api\Admin\OfferApprovalController::class, 'deny']);

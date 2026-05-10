@@ -9,7 +9,12 @@ class ReferralConversion extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['referral_id', 'referred_user_id', 'commission'];
+    protected $fillable = [
+        'referral_id',
+        'referred_user_id',
+        'commission',
+        'status'
+    ];
 
     public function referral()
     {

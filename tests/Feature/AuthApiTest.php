@@ -56,6 +56,32 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.plan', 'free');
     }
 
+    public function test_admin_login_and_me_return_admin_roles(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@affideck.com',
+            'password' => 'admin',
+        ]);
+
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email' => 'admin@affideck.com',
+            'password' => 'admin',
+        ]);
+
+        $loginResponse
+            ->assertOk()
+            ->assertJsonPath('user.roles.0', 'admin');
+
+        $accessToken = $loginResponse->json('access_token');
+
+        $meResponse = $this->withHeader('Authorization', 'Bearer '.$accessToken)
+            ->getJson('/api/me');
+
+        $meResponse
+            ->assertOk()
+            ->assertJsonPath('data.roles.0', 'admin');
+    }
+
     public function test_refresh_rotates_tokens(): void
     {
         $user = User::factory()->create([

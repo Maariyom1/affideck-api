@@ -18,7 +18,7 @@ class UserProfileResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $roles = str_contains(strtolower((string) $this->email), 'admin') ? ['admin'] : ['member'];
+        $roles = $this->roles();
 
         return [
             'id' => $this->id,
@@ -32,9 +32,11 @@ class UserProfileResource extends JsonResource
             'unreadCounts' => [
                 'notifications' => $this->unreadNotifications()->count(),
             ],
-            'permissions' => $roles === ['admin'] ? ['manageUsers', 'manageOffers', 'viewAnalytics'] : ['viewDashboard'],
+            'permissions' => in_array('admin', $roles, true) || in_array('superadmin', $roles, true)
+                ? ['manageUsers', 'manageOffers', 'viewAnalytics']
+                : ['viewDashboard'],
             'featureFlags' => [
-                'canCreateOffers' => in_array('admin', $roles, true),
+                'canCreateOffers' => in_array('admin', $roles, true) || in_array('superadmin', $roles, true),
             ],
         ];
     }

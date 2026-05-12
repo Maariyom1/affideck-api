@@ -68,13 +68,28 @@ class User extends Authenticatable
         return $this->hasMany(MarketplaceItem::class, 'seller_id');
     }
 
+    public function roles(): array
+    {
+        $email = strtolower((string) $this->email);
+
+        if (str_contains($email, 'superadmin')) {
+            return ['superadmin'];
+        }
+
+        if (str_contains($email, 'admin')) {
+            return ['admin'];
+        }
+
+        return ['member'];
+    }
+
     public function isAdmin(): bool
     {
-        return str_contains(strtolower((string) $this->email), 'admin');
+        return in_array('admin', $this->roles(), true) || in_array('superadmin', $this->roles(), true);
     }
 
     public function isSuperAdmin(): bool
     {
-        return str_contains(strtolower((string) $this->email), 'superadmin');
+        return in_array('superadmin', $this->roles(), true);
     }
 }

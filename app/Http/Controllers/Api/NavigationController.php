@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Activity;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Collection;
 
 class NavigationController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user();
-        $isAdmin = str_contains(strtolower((string) $user?->email), 'admin');
+        $isAdmin = $user?->isAdmin() ?? false;
 
         return response()->json([
             'data' => [
@@ -59,89 +62,62 @@ class NavigationController extends Controller
         ]);
     }
 
-    public function liveFeed(): JsonResponse
+    public function liveFeed(Request $request): JsonResponse
     {
+        $perPage = max(1, min(100, (int) $request->integer('per_page', 8)));
+        $page = max(1, (int) $request->integer('page', 1));
+
+        // Query real activities from the database ordered by newest first
+        $allActivities = Activity::query()
+            ->orderByDesc('created_at')
+            ->get(['type', 'title', 'value', 'created_at', 'icon', 'link'])
+            ->map(function ($activity) {
+                return [
+                    'type' => $activity->type,
+                    'text' => $activity->title,
+                    'link' => $activity->link,
+                    'ts' => $activity->created_at->toISOString(),
+                    'icon' => $activity->icon,
+                ];
+            });
+
+        $total = $allActivities->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+
+        // Rotate the feed window every 10 seconds so polling clients receive a fresh slice.
+        $offset = $total > 0 ? (int) (intdiv(now()->unix(), 10) % $total) : 0;
+        $rotatedItems = $total > 0
+            ? $allActivities->slice($offset)->concat($allActivities->take($offset))->values()
+            : collect();
+
+        $pageItems = $rotatedItems->forPage($page, $perPage)->values();
+
+        $windowKey = intdiv(now()->unix(), 10);
+        $cacheKey = 'live-feed:last-window-key';
+        $previousWindowKey = Cache::get($cacheKey);
+        $hasNewData = $previousWindowKey === null || (int) $previousWindowKey !== $windowKey;
+        
+        Cache::put($cacheKey, $windowKey, now()->addMinutes(5));
+
         return response()->json([
-            'data' => [
-                [
-                    'type' => 'offer',
-                    'text' => 'AffiDeck is booting its first API slice.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'AffiDeck is going to be the ultimate affiliate marketing platform.',
-                    'link' => 'https://affideck.lovable.app',
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'AffiDeck is launching soon. Stay tuned!',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'Join our Discord community to get the latest updates and connect with other affiliates.',
-                    'link' => 'https://discord.gg/affideck',
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'Follow us on Twitter for tips, news, and exclusive offers.',
-                    'link' => 'https://twitter.com/affideck',
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'Check out our blog for in-depth articles on affiliate marketing strategies and best practices.',
-                    'link' => 'https://affideck.lovable.app/blog',
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'We are hiring! Visit our careers page to see open positions and join our team.',
-                    'link' => 'https://affideck.lovable.app/careers',
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'The future of affiliate marketing is here.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'AffiDeck is committed to providing the best experience for affiliates and advertisers alike.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'Get ready to take your affiliate marketing game to the next level with AffiDeck.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                [
-                    'type' => 'offer',
-                    'text' => 'AffiDeck is more than just a platform - it\'s a community of passionate affiliates and advertisers.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ],
-                // this is for the developer
-                [
-                    'type' => 'offer',
-                    'text' => 'The dev is "Emmanuel | C\'est Bro Code" - a passionate software engineer and affiliate marketer with a vision to revolutionize the industry.',
-                    'link' => null,
-                    'ts' => now()->toISOString(),
-                ]
-            ],
+            'data' => $pageItems->all(),
             'meta' => [
-                'page' => 1,
-                'per_page' => 20,
-                'total' => 1,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+                'has_new_data' => $page === 1 && $hasNewData,
+                'generated_at' => now()->toISOString(),
             ],
         ]);
+    }
+
+    /**
+     * @return array<int, array{type: string, text: string, link: string|null, ts: string}>
+     */
+    private function liveFeedItems(): array
+    {
+        // Kept for backward compatibility, but live-feed now queries activities table
+        return [];
     }
 }

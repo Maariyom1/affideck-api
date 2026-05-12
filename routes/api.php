@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContentController;
+use App\Http\Controllers\Api\CreativeLibraryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OfferController;
+use App\Http\Controllers\Api\UniversityController;
 use App\Http\Controllers\Api\SearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +23,7 @@ Route::prefix('auth')->group(function (): void {
 });
 
 // Public routes
+Route::get('university/categories', [UniversityController::class, 'categories']);
 Route::get('live-feed', [NavigationController::class, 'liveFeed']);
 Route::get('offers', [OfferController::class, 'index']);
 Route::get('offers/{offerId}', [OfferController::class, 'show']);
@@ -54,6 +57,7 @@ Route::middleware('api.token')->group(function (): void {
     
     // Dashboard
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+    Route::get('dashboard/activity', [DashboardController::class, 'activity']);
     Route::get('dashboard/chart', [DashboardController::class, 'chart']);
     Route::get('dashboard/top-offers', [DashboardController::class, 'topOffers']);
     Route::post('dashboard/export', [DashboardController::class, 'export']);
@@ -92,6 +96,27 @@ Route::middleware('api.token')->group(function (): void {
     Route::post('referrals/share', [\App\Http\Controllers\Api\ReferralController::class, 'share']);
     Route::get('referrals/conversions', [\App\Http\Controllers\Api\ReferralController::class, 'conversions']);
     Route::get('referrals/commissions', [\App\Http\Controllers\Api\ReferralController::class, 'commissions']);
+
+    // University
+    Route::get('university/courses', [UniversityController::class, 'index']);
+    Route::get('university/courses/{id}', [UniversityController::class, 'show']);
+    Route::post('university/courses/{id}/enroll', [UniversityController::class, 'enroll']);
+    Route::get('university/progress', [UniversityController::class, 'progress']);
+
+    Route::middleware(\App\Http\Middleware\EnsureUserIsAdmin::class)->group(function (): void {
+        Route::post('university/courses', [UniversityController::class, 'store']);
+        Route::patch('university/courses/{id}', [UniversityController::class, 'update']);
+        Route::delete('university/courses/{id}', [UniversityController::class, 'destroy']);
+    });
+
+    // Creative Library
+    Route::get('creative-library/tags', [CreativeLibraryController::class, 'tags']);
+    Route::get('creative-library/assets', [CreativeLibraryController::class, 'index']);
+    Route::get('creative-library/assets/{id}', [CreativeLibraryController::class, 'show']);
+    Route::post('creative-library/assets', [CreativeLibraryController::class, 'store']);
+    Route::patch('creative-library/assets/{id}', [CreativeLibraryController::class, 'update']);
+    Route::delete('creative-library/assets/{id}', [CreativeLibraryController::class, 'destroy']);
+    Route::get('creative-library/assets/{id}/download', [CreativeLibraryController::class, 'download']);
 
     // Settings
     Route::get('settings', [\App\Http\Controllers\Api\SettingsController::class, 'show']);

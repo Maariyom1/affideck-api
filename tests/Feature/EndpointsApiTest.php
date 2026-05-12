@@ -8,6 +8,8 @@ use App\Models\CmsPage;
 use App\Models\Offer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class EndpointsApiTest extends TestCase
@@ -124,6 +126,48 @@ class EndpointsApiTest extends TestCase
             ->assertJsonStructure([
                 'data' => ['earnings', 'clicks', 'conversions', 'epc', 'delta24h', 'balance'],
             ]);
+    }
+
+    public function test_dashboard_activity_endpoint(): void
+    {
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $tokens = ApiToken::issuePair($user);
+
+        $user->offers()->create([
+            'name' => 'Activity Offer',
+            'type' => 'cpa',
+            'payout' => 30,
+            'status' => 'published',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-12 11:00:00', 'UTC'));
+
+        $firstResponse = $this->withHeader('Authorization', 'Bearer '.$tokens['access_token'])
+            ->getJson('/api/dashboard/activity?limit=3');
+
+        $firstResponse
+            ->assertOk()
+            ->assertJsonPath('meta.limit', 3)
+            ->assertJsonPath('meta.has_new_data', true)
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => ['type', 'title', 'value', 'time', 'event_type', 'icon', 'link'],
+                ],
+                'meta' => ['limit', 'total', 'has_new_data', 'generated_at'],
+            ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-12 11:00:05', 'UTC'));
+
+        $secondResponse = $this->withHeader('Authorization', 'Bearer '.$tokens['access_token'])
+            ->getJson('/api/dashboard/activity?limit=3');
+
+        $secondResponse
+            ->assertOk()
+            ->assertJsonPath('meta.has_new_data', false);
+
+        Carbon::setTestNow();
     }
 
     public function test_contact_form_endpoint(): void
